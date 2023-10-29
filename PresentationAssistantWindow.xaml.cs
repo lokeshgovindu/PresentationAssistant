@@ -41,10 +41,16 @@ namespace PresentationAssistant
             //this.ParentWindow = Application.Current.MainWindow;
             FindParentWindow();
 
-            this.Loaded += PresentationAssistantWindow_Loaded;
+            this.Loaded      += PresentationAssistantWindow_Loaded;
+            this.SizeChanged += PresentationAssistantWindow_SizeChanged;
 
             _ = CloseAfterSomeTimeAsync();
             ActionId = actionId;
+        }
+
+        private void PresentationAssistantWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            PlaceWindow();
         }
 
         private void PresentationAssistantWindow_Loaded(object sender, RoutedEventArgs e)
@@ -63,6 +69,7 @@ namespace PresentationAssistant
         {
             if (this.ParentWindow != null)
             {
+                double parentTop = this.ParentWindow.Top;
                 double parentLeft = this.ParentWindow.Left;
 
                 if (this.ParentWindow.WindowState == WindowState.Maximized)
@@ -70,11 +77,12 @@ namespace PresentationAssistant
                     var windowInterop = new WindowInteropHelper(this.ParentWindow);
                     var screen = Screen.FromHandle(windowInterop.Handle);
 
+                    parentTop  = screen.WorkingArea.Top;
                     parentLeft = screen.WorkingArea.Left;
                 }
 
                 // StatusBar height - 23
-                this.Top = (this.ParentWindow.ActualHeight - this.ActualHeight - 31);
+                this.Top  = parentTop + (this.ParentWindow.ActualHeight - this.ActualHeight - 31);
                 this.Left = parentLeft + ((this.ParentWindow.ActualWidth - this.ActualWidth) / 2);
             }
         }

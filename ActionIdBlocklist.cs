@@ -17,7 +17,10 @@ namespace PresentationAssistant
             "Edit.CharLeft",
             "Edit.CharRight",
             "Edit.PageUp",
-            "Edit.PageDown"
+            "Edit.PageDown",
+
+            // This is coming always in Debug
+            "Debug.LocationToolbar.ProcessCombo"
         };
 
         public static bool IsBlocked(string actionId)
