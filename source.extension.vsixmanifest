@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+	<Metadata>
+		<Identity Id="PresentationAssistant.c16bf07b-ac52-45b4-99b5-d751ca5f48df" Version="2023.1.0.2" Language="en-US" Publisher="Lokesh Govindu" />
+		<DisplayName>PresentationAssistant</DisplayName>
+		<Description xml:space="preserve">Presentation Assistant for Visual Studio which will display the keyboard shortcuts for the currently executing action.</Description>
+		<MoreInfo>https://marketplace.visualstudio.com/items?itemName=LokeshGovindu.PresentationAssistant</MoreInfo>
+		<Tags>keyboard shortcuts commands</Tags>
+	</Metadata>
+	<Installation>
+		<InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)">
+			<ProductArchitecture>amd64</ProductArchitecture>
+		</InstallationTarget>
+	</Installation>
+	<Dependencies>
+		<Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.5,)" />
+	</Dependencies>
+	<Prerequisites>
+		<Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,18.0)" DisplayName="Visual Studio core editor" />
+	</Prerequisites>
+	<Assets>
+		<Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
+	</Assets>
+</PackageManifest>
