@@ -6,8 +6,8 @@
         public const string Name        = "PresentationAssistant";
         public const string Description = @"Presentation Assistant for Visual Studio which will display the keyboard shortcuts for the currently executing action.";
         public const string Language    = "en-US";
-        public const string Version     = "2023.1.0.2";
+        public const string Version     = "2023.1.0.4";
         public const string Author      = "Lokesh Govindu";
-        public const string Tags        = "PresentationAssistant";
+        public const string Tags        = "keyboard, shortcuts, commands";
     }
 }

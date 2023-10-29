@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -49,7 +50,8 @@ namespace PresentationAssistant
         private static DTE2                         _dte;
         private static IAsyncServiceProvider        _serviceProvider;
         private static CommandEvents                _commandEvents;
-        private static PresentationAssistantWindow  _window           = null;
+        private static PresentationAssistantWindow  _window = null;
+        private static readonly string              _ApplicationNameShort = "PA";
 
 #if DEBUG
         private static OutputWindowPane             _outputWindowPane = null;
@@ -116,18 +118,22 @@ namespace PresentationAssistant
             string actionId = GetCommandName(cmd);
             bool isBlocked = ActionIdBlocklist.IsBlocked(actionId);
 
+            if (isBlocked) return;
+            if (_window != null && _window.ActionId == actionId && !_window.Terminated) return;
+
+            string description = GetCommandDescription(actionId);
+
 #if DEBUG
+            _outputWindowPane.OutputString("Guid: " + Guid + ", ID: " + ID + "\n");
             _outputWindowPane.OutputString(
-                String.Format("Command: {0}, IsBlocked: {1}, Shortcuts: {2}\n",
-                    actionId, isBlocked, string.Join(" || ", shortcuts)));
+                String.Format("Command: {0}, IsBlocked: {1}, Shortcuts: {2}, Description: {3}\n",
+                    actionId, isBlocked, string.Join(" || ", shortcuts), ""));
             if (_window != null) {
                 _outputWindowPane.OutputString(
                     String.Format("Window.ActionId = {0}, Window.Terminated = {1}\n",
                         _window.ActionId, _window.Terminated));
             }
 #endif
-            if (isBlocked) return;
-            if (_window != null && _window.ActionId == actionId && !_window.Terminated) return;
 
             lock (typeof(PresentationAssistantPackage)) {
 #if DEBUG
@@ -139,12 +145,17 @@ namespace PresentationAssistant
                 }
 
                 _window = new PresentationAssistantWindow(actionId);
+
                 var contentBlock = _window.CommandText.Children;
+
                 contentBlock.Clear();
-                Run actionIdRun = new Run(actionId);
+
+                //Run actionIdRun = new Run(actionId);
+                Run actionIdRun = new Run(description);
                 actionIdRun.FontWeight = FontWeights.Bold;
                 contentBlock.Add(new TextBlock(actionIdRun));
                 contentBlock.Add(new TextBlock(new Run(" via ")));
+
                 var space = Convert.ToChar(160);
                 for (int i = 0; i < shortcuts.Length; ++i)
                 {
@@ -153,6 +164,8 @@ namespace PresentationAssistant
                     }
                     contentBlock.Add(new TextBlock(new Run(shortcuts[i])));
                 }
+
+                _dte.StatusBar.Text = _ApplicationNameShort + ": " + actionId + " via " + String.Join(" | ", shortcuts);
                 _window.Show();
             }
         }
@@ -170,6 +183,19 @@ namespace PresentationAssistant
         {
             ThreadHelper.ThrowIfNotOnUIThread();
             return string.IsNullOrWhiteSpace(vsCommand.LocalizedName) ? vsCommand.Name : vsCommand.LocalizedName;
+        }
+
+        private static string GetCommandDescription(string actionId)
+        {
+            string commandName = actionId.Substring(actionId.LastIndexOf('.') + 1);
+
+            // Define a regular expression pattern to split the string at capital letters
+            string pattern = @"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])";
+
+            // Split the input into words using the regular expression pattern
+            string[] words = Regex.Split(commandName, pattern);
+
+            return String.Join(" ", words);
         }
 
 #if DEBUG
@@ -191,7 +217,7 @@ namespace PresentationAssistant
             {
                 var outputWindow = (OutputWindow)GetOutputWindow().Object;
                 _outputWindowPane = outputWindow.OutputWindowPanes.Add(OutputWindowName);
-                _outputWindowPane.OutputString("Output window created\n");
+                _outputWindowPane.OutputString("PresentationAssistant output window created\n");
             }
         }
 

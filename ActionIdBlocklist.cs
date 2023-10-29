@@ -20,12 +20,16 @@ namespace PresentationAssistant
             "Edit.PageDown",
 
             // This is coming always in Debug
-            "Debug.LocationToolbar.ProcessCombo"
+            "Debug.LocationToolbar.ProcessCombo",
+            "Debug.LocationToolbar.StackFrameCombo",
+            "Debug.LocationToolbar.ThreadCombo"
         };
 
         public static bool IsBlocked(string actionId)
         {
-            return ActionIds.Contains(actionId);
+            return
+                ActionIds.Contains(actionId) ||
+                actionId.StartsWith("Debug.LocationToolbar.");
         }
     }
 }

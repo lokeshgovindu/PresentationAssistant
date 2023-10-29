@@ -28,7 +28,7 @@ namespace PresentationAssistant
         public  string ActionId     { get; private set; }
         public  bool   Terminated   { get; private set; }
 
-        private readonly int LifeTimeInMS = 2000;
+        private readonly int LifeTimeInMS = 3000;
 
         public PresentationAssistantWindow(string actionId)
         {
