@@ -1,8 +1,10 @@
-﻿using EnvDTE;
+using EnvDTE;
 using EnvDTE80;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using PresentationAssistant.State;
+using PresentationAssistant.Theming;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -10,9 +12,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
 using Task = System.Threading.Tasks.Task;
 
 namespace PresentationAssistant
@@ -38,6 +37,13 @@ namespace PresentationAssistant
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)]
     [Guid(PresentationAssistantPackage.PackageGuidString)]
     [ProvideAutoLoad(VSConstants.UICONTEXT.NoSolution_string, PackageAutoLoadFlags.BackgroundLoad)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExists_string, PackageAutoLoadFlags.BackgroundLoad)]
+    [ProvideOptionPage(typeof(PresentationAssistantOptionsDialog),
+        PresentationAssistantOptionsDialog.Category, PresentationAssistantOptionsDialog.SubCategory,
+        1000, 1001, true)]
+    [ProvideProfile(typeof(PresentationAssistantOptionsDialog),
+        PresentationAssistantOptionsDialog.Category, PresentationAssistantOptionsDialog.SubCategory,
+        1000, 1001, true)]
     public sealed class PresentationAssistantPackage : AsyncPackage
     {
         /// <summary>
@@ -45,18 +51,26 @@ namespace PresentationAssistant
         /// </summary>
         public const string PackageGuidString = "21f2f4b1-873b-4456-ba7b-2101d1a686c9";
 
+        public const string ApplicationName      = "PresentationAssistant";
+        public const string ApplicationNameShort = "PA";
+
         #region Package Members
 
+        private static readonly object              _windowLock = new object();
+
         private static DTE2                         _dte;
-        private static IAsyncServiceProvider        _serviceProvider;
         private static CommandEvents                _commandEvents;
         private static PresentationAssistantWindow  _window = null;
-        private static readonly string              _ApplicationNameShort = "PA";
+        private static ShortcutDisplayStatistics    _statistics;
+        private static Settings                     _settings;
+        private static CommandExclusions            _exclusions = CommandExclusions.Empty;
 
 #if DEBUG
         private static OutputWindowPane             _outputWindowPane = null;
-        private static string                       OutputWindowName  = "PresentationAssistant";
+        private static readonly string              OutputWindowName  = ApplicationName;
 #endif
+
+        public static Settings Settings => _settings;
 
         /// <summary>
         /// Initialization of the package; this method is called right after the package is sited, so this is the place
@@ -77,12 +91,29 @@ namespace PresentationAssistant
                 InitializeServices();
             }
 
+            if (_dte == null)
+            {
+                Debug.WriteLine($"[{ApplicationName}] No DTE, giving up on initialization.");
+                return;
+            }
+
 #if DEBUG
             CreateOutputWindowPane();
 #endif
 
+            _settings   = Settings.Load();
+            _exclusions = new CommandExclusions(_settings.ExcludedCommands);
+            _statistics = new ShortcutDisplayStatistics(_settings.MultiplierTimeoutInMS);
+
             _commandEvents = _dte.Events.CommandEvents;
             _commandEvents.BeforeExecute += CommandEvents_BeforeExecute;
+
+            Settings.SettingsUpdated  += OnSettingsUpdated;
+            ThemeManager.ThemeChanged += OnShellThemeChanged;
+
+            OutputLine("{0} initialized. Theme={1}, WindowTimeout={2}ms, MultiplierTimeout={3}ms, ShortcutsOnly={4}",
+                ApplicationName, _settings.Theme, _settings.WindowTimeoutInMS,
+                _settings.MultiplierTimeoutInMS, _settings.ShortcutsOnly);
         }
 
         private void InitializeServices()
@@ -90,88 +121,191 @@ namespace PresentationAssistant
             _dte = this.GetService<SDTE, SDTE>() as DTE2;
 
             Debug.Assert(_dte != null, "dte != null");
-            if (_dte != null)
+            if (_dte == null)
             {
-                PresentationAssistantPackage._serviceProvider = this;
-            }
-            else
-            {
-                Debug.WriteLine("[PresentationAssistant] Cannot get a DTE service.");
+                Debug.WriteLine($"[{ApplicationName}] Cannot get a DTE service.");
             }
         }
 
-#endregion
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Settings.SettingsUpdated  -= OnSettingsUpdated;
+                ThemeManager.ThemeChanged -= OnShellThemeChanged;
+
+                // Dispose can run off the main thread during shutdown, and the DTE event
+                // object may only be touched from it - so skip the unsubscribe rather
+                // than marshalling (which risks deadlocking a shutting-down shell).
+                if (_commandEvents != null && ThreadHelper.CheckAccess())
+                {
+#pragma warning disable VSTHRD010 // CheckAccess above already established main-thread affinity.
+                    _commandEvents.BeforeExecute -= CommandEvents_BeforeExecute;
+#pragma warning restore VSTHRD010
+                }
+            }
+
+            base.Dispose(disposing);
+        }
+
+        #endregion
 
         private void CommandEvents_BeforeExecute(string Guid, int ID, object CustomIn, object CustomOut, ref bool CancelDefault)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            Command cmd = null;
-            try { cmd = _dte.Commands.Item(Guid, ID); } catch (Exception) { return; }
-            if (cmd == null) return;
 
-            var bindings = cmd.Bindings as object[];
-            if (bindings == null && !bindings.Any()) return;
+            var shortcut = GetShortcut(Guid, ID);
+            if (shortcut == null) return;
+            if (_settings.ShortcutsOnly && !shortcut.HasShortcuts) return;
 
-            var shortcuts = GetBindings(bindings);
-            if (!shortcuts.Any()) return;
+            // Count the invocation only once the command has passed every filter,
+            // otherwise a suppressed command in the middle of a run would reset the
+            // multiplier.
+            _statistics.OnAction(shortcut.ActionId);
+            shortcut.Multiplier = _statistics.Multiplier;
 
-            string actionId = GetCommandName(cmd);
-            bool isBlocked = ActionIdBlocklist.IsBlocked(actionId);
+            OutputLine("Guid: {0}, ID: {1}, {2}", Guid, ID, shortcut);
 
-            if (isBlocked) return;
-            if (_window != null && _window.ActionId == actionId && !_window.Terminated) return;
-
-            string description = GetCommandDescription(actionId);
-
-#if DEBUG
-            _outputWindowPane.OutputString("Guid: " + Guid + ", ID: " + ID + "\n");
-            _outputWindowPane.OutputString(
-                String.Format("Command: {0}, IsBlocked: {1}, Shortcuts: {2}, Description: {3}\n",
-                    actionId, isBlocked, string.Join(" || ", shortcuts), ""));
-            if (_window != null) {
-                _outputWindowPane.OutputString(
-                    String.Format("Window.ActionId = {0}, Window.Terminated = {1}\n",
-                        _window.ActionId, _window.Terminated));
+            try
+            {
+                ShowShortcut(shortcut);
             }
-#endif
+            catch (Exception ex)
+            {
+                // Visual Studio swallows exceptions thrown out of DTE event handlers, so
+                // report them here rather than letting the overlay fail invisibly.
+                Debug.WriteLine($"[{ApplicationName}] Failed to show the overlay: {ex}");
+                OutputLine("Failed to show the overlay: {0}", ex);
+            }
+        }
 
-            lock (typeof(PresentationAssistantPackage)) {
-#if DEBUG
-                _outputWindowPane.OutputString("Inside lock (typeof(PresentationAssistantPackage))\n");
-#endif
-                if (_window != null) {
-                    _window.Close();
-                    _window = null;
-                }
+        private static void ShowShortcut(ShortcutDetails shortcut)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
 
-                _window = new PresentationAssistantWindow(actionId);
-
-                var contentBlock = _window.CommandText.Children;
-
-                contentBlock.Clear();
-
-                //Run actionIdRun = new Run(actionId);
-                Run actionIdRun = new Run(description);
-                actionIdRun.FontWeight = FontWeights.Bold;
-                contentBlock.Add(new TextBlock(actionIdRun));
-                contentBlock.Add(new TextBlock(new Run(" via ")));
-
-                var space = Convert.ToChar(160);
-                for (int i = 0; i < shortcuts.Length; ++i)
+            lock (_windowLock)
+            {
+                if (_window == null)
                 {
-                    if (i > 0) {
-                        contentBlock.Add(new TextBlock(new Run(space + "or" + space)) { Opacity = 0.5 });
-                    }
-                    contentBlock.Add(new TextBlock(new Run(shortcuts[i])));
+                    _window = new PresentationAssistantWindow(_settings.WindowTimeoutInMS);
+
+                    // If the window ever does close - the shell tearing down its owner,
+                    // say - drop it so the next command builds a fresh one instead of
+                    // calling Show() on a closed window forever.
+                    _window.Closed += OnWindowClosed;
                 }
 
-                _dte.StatusBar.Text = _ApplicationNameShort + ": " + actionId + " via " + String.Join(" | ", shortcuts);
-                _window.Show();
+                // Re-resolving per show is what makes an edit to themes.json visible on the
+                // next keystroke. The catalog only re-reads the file when its timestamp
+                // changed, so this is a dictionary lookup in the common case.
+                _window.ShowShortcut(shortcut, ThemeManager.Resolve(_settings.Theme));
+
+                _dte.StatusBar.Text = shortcut.HasShortcuts
+                    ? $"{ApplicationNameShort}: {shortcut.ActionId} via {shortcut.ShortcutsStr}"
+                    : $"{ApplicationNameShort}: {shortcut.ActionId}";
+            }
+        }
+
+        private ShortcutDetails GetShortcut(string Guid, int ID)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            Command cmd;
+            try { cmd = _dte.Commands.Item(Guid, ID); } catch (Exception) { return null; }
+            if (cmd == null) return null;
+
+            // Filtering must use the canonical name: LocalizedName is translated, and the
+            // blocklists are written in canonical form, so matching on the localized name
+            // silently stops working on a non-English IDE.
+            string actionId = GetCanonicalName(cmd);
+            if (string.IsNullOrEmpty(actionId)) return null;
+            if (ActionIdBlocklist.IsBlocked(actionId)) return null;
+            if (_exclusions.IsExcluded(actionId)) return null;
+
+            string[] shortcuts = null;
+            if (cmd.Bindings is object[] bindings && bindings.Any())
+            {
+                shortcuts = GetBindings(bindings);
+                if (shortcuts.Length == 0) shortcuts = null;
+            }
+
+            return new ShortcutDetails
+            {
+                ActionId = actionId,
+
+                // The description is what the user reads, so prefer the localized name.
+                Description = GetCommandDescription(GetDisplayName(cmd, actionId)),
+                Shortcuts   = shortcuts,
+                Multiplier  = 1
+            };
+        }
+
+        /// <summary>
+        /// Opens themes.json for editing, creating it and refreshing the generated
+        /// reference listing first. Driven by the "..." button on the options page.
+        /// </summary>
+        public static void OpenThemesFile()
+        {
+            ThemeCatalog.EnsureAuthoringFiles();
+
+            try
+            {
+                // Prefer the VS editor; fall back to the shell if the package has not been
+                // sited yet, so the button always does something.
+                if (ThreadHelper.CheckAccess() && _dte != null)
+                {
+#pragma warning disable VSTHRD010 // CheckAccess above already established main-thread affinity.
+                    _dte.ItemOperations.OpenFile(AppPaths.ThemesFile, EnvDTE.Constants.vsViewKindTextView);
+#pragma warning restore VSTHRD010
+                    return;
+                }
+
+                System.Diagnostics.Process.Start(
+                    new ProcessStartInfo(AppPaths.ThemesFile) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[{ApplicationName}] Failed to open themes.json: {ex}");
+            }
+        }
+
+        private static void OnWindowClosed(object sender, EventArgs e)
+        {
+            if (ReferenceEquals(sender, _window)) _window = null;
+        }
+
+        private void OnSettingsUpdated(object sender, EventArgs e)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            _settings = Settings.Load();
+            _exclusions = new CommandExclusions(_settings.ExcludedCommands);
+            _statistics.SetMultiplierTimeout(_settings.MultiplierTimeoutInMS);
+
+            // The user may have edited themes.json while the dialog was open.
+            ThemeCatalog.Invalidate();
+
+            // The overlay is created lazily, on the first announced command.
+            if (_window != null)
+            {
+                _window.SetWindowTimeout(_settings.WindowTimeoutInMS);
+                _window.ApplyTheme(ThemeManager.Resolve(_settings.Theme));
+            }
+        }
+
+        private void OnShellThemeChanged(object sender, EventArgs e)
+        {
+            // Only Auto and VisualStudio derive from the shell, but re-resolving a fixed
+            // palette is a dictionary lookup, so don't bother special-casing.
+            if (_window != null && _settings != null)
+            {
+                _window.ApplyTheme(ThemeManager.Resolve(_settings.Theme));
             }
         }
 
         private static string[] GetBindings(IEnumerable<object> bindings)
         {
+            // Bindings arrive as "Scope::Key", e.g. "Text Editor::Ctrl+Down Arrow".
             var result = bindings.Select(binding => binding.ToString().IndexOf("::") >= 0
                 ? binding.ToString().Substring(binding.ToString().IndexOf("::") + 2)
                 : binding.ToString()).Distinct();
@@ -179,10 +313,18 @@ namespace PresentationAssistant
             return result.ToArray();
         }
 
-        private static string GetCommandName(Command vsCommand)
+        /// <summary>The untranslated command name, e.g. <c>Edit.ScrollLineDown</c>.</summary>
+        private static string GetCanonicalName(Command vsCommand)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            return string.IsNullOrWhiteSpace(vsCommand.LocalizedName) ? vsCommand.Name : vsCommand.LocalizedName;
+            return string.IsNullOrWhiteSpace(vsCommand.Name) ? vsCommand.LocalizedName : vsCommand.Name;
+        }
+
+        /// <summary>The translated command name, falling back to the canonical one.</summary>
+        private static string GetDisplayName(Command vsCommand, string canonical)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            return string.IsNullOrWhiteSpace(vsCommand.LocalizedName) ? canonical : vsCommand.LocalizedName;
         }
 
         private static string GetCommandDescription(string actionId)
@@ -198,15 +340,19 @@ namespace PresentationAssistant
             return String.Join(" ", words);
         }
 
+        public static void OutputLine(string messageFormat, params object[] arguments)
+        {
+#if DEBUG
+            ThreadHelper.ThrowIfNotOnUIThread();
+            _outputWindowPane?.OutputString(string.Format(messageFormat, arguments) + Environment.NewLine);
+#endif
+        }
+
 #if DEBUG
         public static OutputWindowPane GetOutputWindowPane()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            if (_outputWindowPane == null)
-            {
-                var outputWindow = (OutputWindow)GetOutputWindow().Object;
-                _outputWindowPane = outputWindow.OutputWindowPanes.Add(OutputWindowName);
-            }
+            CreateOutputWindowPane();
             return _outputWindowPane;
         }
 
@@ -217,7 +363,7 @@ namespace PresentationAssistant
             {
                 var outputWindow = (OutputWindow)GetOutputWindow().Object;
                 _outputWindowPane = outputWindow.OutputWindowPanes.Add(OutputWindowName);
-                _outputWindowPane.OutputString("PresentationAssistant output window created\n");
+                _outputWindowPane.OutputString($"{ApplicationName} output window created{Environment.NewLine}");
             }
         }
 

@@ -1,17 +1,17 @@
-﻿<Window x:Class="PresentationAssistant.PresentationAssistantWindow"
+<Window x:Class="PresentationAssistant.PresentationAssistantWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:PA="clr-namespace:PresentationAssistant"
-        xmlns:Shell="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0"
-        mc:Ignorable="d" 
+        mc:Ignorable="d"
+        d:DataContext="{x:Static PA:SampleData.MultiplierShortcut}"
         Width="Auto" Height="Auto"
         ShowActivated="False"
         ShowInTaskbar="False"
         Focusable="False"
-        Background="#FFDCF2DC"
-        Foreground="{DynamicResource {x:Static Shell:VsBrushes.PanelTextKey}}"
+        Background="{DynamicResource PA.BackgroundBrush}"
+        Foreground="{DynamicResource PA.ForegroundBrush}"
         FontSize="24"
         FontFamily="Segoe UI"
         WindowStyle="None"
@@ -19,17 +19,47 @@
         WindowStartupLocation="Manual"
         SizeToContent="WidthAndHeight"
         AllowsTransparency="True"
-        Opacity="0.8">
-    
-    <!--Background="{DynamicResource {x:Static Shell:VsBrushes.AccentLightKey}}"-->
+        Opacity="0.85">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
+        <!-- Fallbacks for the designer. ApplyTheme replaces these entries at runtime,
+             which is why every consumer below uses DynamicResource. -->
+        <SolidColorBrush x:Key="PA.BackgroundBrush"          Color="#DCF2DC" />
+        <SolidColorBrush x:Key="PA.ForegroundBrush"          Color="#1E1E1E" />
+        <SolidColorBrush x:Key="PA.SecondaryForegroundBrush" Color="#5A6B5A" />
+        <SolidColorBrush x:Key="PA.BorderBrush"              Color="#7FA97F" />
+    </Window.Resources>
 
     <Border BorderThickness="1"
-            BorderBrush="{DynamicResource {x:Static Shell:VsBrushes.AccentBorderKey}}"
+            BorderBrush="{DynamicResource PA.BorderBrush}"
             Padding="10 5 10 5">
         <StackPanel Name="CommandText"
                     Orientation="Horizontal"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center">
+
+            <!-- Every binding below must state Mode explicitly. Run.Text binds TwoWay by
+                 default, and ShortcutDetails exposes get-only properties, so an implicit
+                 binding throws "a TwoWay binding cannot work on the read-only property"
+                 during layout - swallowed silently inside the DTE event handler. -->
+
+            <!-- "Scroll Line Down". No ToolTip: the window is click-through
+                 (WS_EX_TRANSPARENT) so it never sees the mouse and a tooltip could never
+                 appear. The full command id goes to the status bar instead. -->
+            <TextBlock FontWeight="Bold"
+                       Text="{Binding Description, Mode=OneWay}" />
+
+            <!-- " via Ctrl+Down Arrow" -->
+            <TextBlock xml:space="preserve"
+                       Foreground="{DynamicResource PA.SecondaryForegroundBrush}"
+                       Visibility="{Binding HasShortcuts, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"> via <Run Text="{Binding ShortcutsStr, Mode=OneWay}" /></TextBlock>
+
+            <!-- " ×9" -->
+            <TextBlock xml:space="preserve"
+                       Foreground="{DynamicResource PA.SecondaryForegroundBrush}"
+                       Visibility="{Binding HasMultiplier, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"> ×<Run Text="{Binding Multiplier, Mode=OneWay}" /></TextBlock>
         </StackPanel>
     </Border>
 </Window>

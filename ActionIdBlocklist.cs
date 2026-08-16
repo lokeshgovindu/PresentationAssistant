@@ -1,14 +1,17 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PresentationAssistant
 {
+    /// <summary>
+    /// Commands that are never announced. Split into the built-in list below, which
+    /// suppresses commands the IDE fires constantly on its own, and a user list from the
+    /// "Excluded Commands" setting.
+    /// </summary>
     internal static class ActionIdBlocklist
     {
-        private static readonly HashSet<string> ActionIds = new HashSet<string> {
+        private static readonly HashSet<string> ActionIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
             "Edit.BreakLine",
             "Edit.LineStart",
             "Edit.LineEnd",
@@ -19,17 +22,31 @@ namespace PresentationAssistant
             "Edit.PageUp",
             "Edit.PageDown",
 
+            // Toolbar combo boxes fire on every selection change
+            "Debug.DebugType",
+            "Build.SolutionPlatforms",
+            "Build.SolutionConfigurations",
+
             // This is coming always in Debug
             "Debug.LocationToolbar.ProcessCombo",
             "Debug.LocationToolbar.StackFrameCombo",
             "Debug.LocationToolbar.ThreadCombo"
         };
 
+        /// <summary>The built-in names, for documentation and for the options page description.</summary>
+        public static IEnumerable<string> BuiltIn => ActionIds.OrderBy(x => x, StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// True when the command is suppressed by the built-in list. Pass the canonical
+        /// command name (<c>Edit.ScrollLineDown</c>), not the localized one, or these
+        /// comparisons stop matching on a translated IDE.
+        /// </summary>
         public static bool IsBlocked(string actionId)
         {
-            return
-                ActionIds.Contains(actionId) ||
-                actionId.StartsWith("Debug.LocationToolbar.");
+            if (string.IsNullOrEmpty(actionId)) return false;
+
+            return ActionIds.Contains(actionId) ||
+                   actionId.StartsWith("Debug.LocationToolbar.", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

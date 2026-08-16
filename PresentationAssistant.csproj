@@ -46,11 +46,27 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="ActionIdBlocklist.cs" />
+    <Compile Include="AppPaths.cs" />
+    <Compile Include="CommandExclusions.cs" />
     <Compile Include="PresentationAssistantWindow.xaml.cs">
       <DependentUpon>PresentationAssistantWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PresentationAssistantPackage.cs" />
+    <Compile Include="SampleData.cs" />
+    <Compile Include="ShortcutDetails.cs" />
+    <Compile Include="ShortcutDisplayStatistics.cs" />
+    <Compile Include="State\PresentationAssistantOptionsDialog.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="State\Settings.cs" />
+    <Compile Include="Theming\ThemeCatalog.cs" />
+    <Compile Include="Theming\ThemeDefinition.cs" />
+    <Compile Include="Theming\ThemeManager.cs" />
+    <Compile Include="Theming\ThemeNameConverter.cs" />
+    <Compile Include="Theming\ThemeNames.cs" />
+    <Compile Include="Theming\ThemePalette.cs" />
+    <Compile Include="Theming\ThemesFileEditor.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -67,7 +83,9 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />
+    <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
     <Reference Include="WindowsBase" />
