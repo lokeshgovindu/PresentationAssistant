@@ -1,0 +1,60 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+    tags-ignore: ['**']
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  # Runs on a bare runner: the tests compile the extension's own sources rather than
+  # referencing the VSIX project, so nothing here needs the Visual Studio extension
+  # development workload.
+  test:
+    name: tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Test
+        run: dotnet test Tests/PresentationAssistant.Tests.csproj --configuration Release --nologo --logger "trx;LogFileName=tests.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: Tests/TestResults/*.trx
+          if-no-files-found: ignore
+
+  # Builds the extension itself. This one does need the VS SDK, which windows-latest
+  # carries as part of its Visual Studio installation; if a future runner image drops it,
+  # this job is the one that will complain.
+  vsix:
+    name: vsix
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore
+        run: msbuild PresentationAssistant.csproj -t:Restore -v:minimal -nologo
+
+      - name: Build
+        run: msbuild PresentationAssistant.csproj -t:Rebuild -p:Configuration=Release -p:Platform=AnyCPU -p:DeployExtension=false -v:minimal -nologo
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: PresentationAssistant.vsix
+          path: bin/Release/PresentationAssistant.vsix
+          if-no-files-found: error

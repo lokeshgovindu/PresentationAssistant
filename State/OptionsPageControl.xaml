@@ -1,0 +1,257 @@
+<UserControl x:Class="PresentationAssistant.State.OptionsPageControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vs="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0"
+             mc:Ignorable="d"
+             Background="{DynamicResource {x:Static vs:VsBrushes.ToolWindowBackgroundKey}}"
+             MinWidth="480">
+
+    <UserControl.Resources>
+        <!-- Take colours from the shell so the page belongs in both light and dark. -->
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static vs:VsBrushes.WindowTextKey}}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static vs:VsBrushes.WindowTextKey}}" />
+            <Setter Property="Margin" Value="0 3 0 3" />
+        </Style>
+        <Style TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static vs:VsBrushes.WindowTextKey}}" />
+            <Setter Property="Margin" Value="0 0 16 0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static vs:VsBrushes.WindowTextKey}}" />
+            <Setter Property="Background" Value="{DynamicResource {x:Static vs:VsBrushes.ComboBoxBackgroundKey}}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource {x:Static vs:VsBrushes.ComboBoxBorderKey}}" />
+            <Setter Property="Padding" Value="3 2 3 2" />
+        </Style>
+
+        <!-- Section heading -->
+        <Style x:Key="Heading" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static vs:VsBrushes.WindowTextKey}}" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="0 12 0 4" />
+        </Style>
+
+        <!-- Explanatory text under a control -->
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static vs:VsBrushes.GrayTextKey}}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0 3 0 0" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <!-- A gutter on all four sides: option pages sit flush against the tree otherwise. -->
+        <StackPanel Margin="12 10 16 14">
+
+            <!-- ============================ Preview ============================ -->
+            <TextBlock Text="Preview" Style="{StaticResource Heading}" Margin="0 0 0 5" />
+
+            <!-- No fill of its own: the overlay supplies its own background and border, and
+                 a themed backdrop brush here can be a gradient or partly transparent. -->
+            <Border BorderBrush="{DynamicResource {x:Static vs:VsBrushes.ComboBoxBorderKey}}"
+                    BorderThickness="1" Padding="0 12 0 12">
+                <Border Background="{Binding PreviewBackground}"
+                        BorderBrush="{Binding PreviewBorder}"
+                        BorderThickness="1"
+                        Opacity="{Binding PreviewOpacity}"
+                        Padding="10 5 10 5"
+                        HorizontalAlignment="Center"
+                        TextBlock.FontFamily="Segoe UI"
+                        TextBlock.FontSize="{Binding FontSize}">
+                    <StackPanel Orientation="{Binding PreviewOrientation}" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding PreviewShortcut.Description}"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{Binding PreviewForeground}" />
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    Margin="{Binding PreviewDetailMargin}">
+                            <TextBlock Text="via"
+                                       Visibility="{Binding PreviewViaVisibility}"
+                                       Foreground="{Binding PreviewSecondaryForeground}" />
+                            <TextBlock Text="{Binding PreviewShortcut.ShortcutsStr}"
+                                       Margin="6 0 0 0"
+                                       Foreground="{Binding PreviewSecondaryForeground}" />
+                            <TextBlock Text="{Binding PreviewShortcut.MultiplierStr}"
+                                       Margin="8 0 0 0"
+                                       Foreground="{Binding PreviewSecondaryForeground}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Border>
+
+            <!-- =========================== Behaviour =========================== -->
+            <TextBlock Text="Behaviour" Style="{StaticResource Heading}" />
+
+            <CheckBox Content="Enabled" IsChecked="{Binding Enabled}" />
+            <TextBlock Style="{StaticResource Hint}"
+                       Text="Turn the overlay off without uninstalling the extension." />
+
+            <CheckBox Content="Only announce commands that have a keyboard shortcut"
+                      IsChecked="{Binding ShortcutsOnly}" Margin="0 10 0 3" />
+
+            <Grid Margin="0 8 0 0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="70" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Hide the overlay after" Margin="0 0 8 0" />
+                <TextBox   Grid.Row="0" Grid.Column="1"
+                           Text="{Binding WindowTimeout, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="ms" Margin="6 0 0 0" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Count repeats within" Margin="0 6 8 0" />
+                <TextBox   Grid.Row="1" Grid.Column="1" Margin="0 6 0 0"
+                           Text="{Binding MultiplierTimeout, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="ms" Margin="6 6 0 0" />
+            </Grid>
+
+            <TextBlock Style="{StaticResource Hint}"
+                       Text="Pressing the same shortcut again within the repeat window adds to the count instead of showing the overlay afresh." />
+
+            <!-- ========================== Appearance =========================== -->
+            <TextBlock Text="Appearance" Style="{StaticResource Heading}" />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Theme" Margin="0 0 8 0" />
+                <ComboBox  Grid.Column="1"
+                           ItemsSource="{Binding AvailableThemes}"
+                           SelectedItem="{Binding Theme}"
+                           MinWidth="180" />
+                <Button    Grid.Column="2" x:Name="EditThemesButton"
+                           Content="Edit themes..." Margin="8 0 0 0" Padding="10 3 10 3"
+                           Click="EditThemesButton_Click" />
+            </Grid>
+            <TextBlock Style="{StaticResource Hint}"
+                       Text="Auto follows the Visual Studio theme. VisualStudio builds the overlay from the shell's own colours. Anything you define in themes.json appears here too." />
+
+            <Grid Margin="0 12 0 0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Font size" Margin="0 0 8 0" />
+                <Slider    Grid.Column="1" Minimum="8" Maximum="96" TickFrequency="1"
+                           IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                           Value="{Binding FontSize}" />
+                <TextBlock Grid.Column="2" Text="{Binding FontSize}" Margin="8 0 0 0" MinWidth="24" />
+            </Grid>
+
+            <Grid Margin="0 12 0 0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Layout" Margin="0 0 8 0" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <RadioButton Content="One line" GroupName="Layout" IsChecked="{Binding IsHorizontal}" />
+                    <RadioButton Content="Two lines" GroupName="Layout" IsChecked="{Binding IsVertical}" />
+                </StackPanel>
+            </Grid>
+
+            <!-- ============================ Colours ============================ -->
+            <TextBlock Text="Colours" Style="{StaticResource Heading}" />
+            <TextBlock Style="{StaticResource Hint}" Margin="0 0 0 8"
+                       Text="Click a swatch to pick a colour, or type a value such as #DCF2DC. Saving stores these as an entry for the selected theme in themes.json, leaving the built-in untouched." />
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="110" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Background" />
+                <Button    Grid.Row="0" Grid.Column="1" Tag="Background" Click="Swatch_Click"
+                           Width="34" Height="20" Margin="0 2 8 2" Padding="0"
+                           Background="{Binding PreviewBackground}" />
+                <TextBox   Grid.Row="0" Grid.Column="2" Margin="0 2 0 2" FontFamily="Consolas"
+                           Text="{Binding BackgroundHex, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Command text" />
+                <Button    Grid.Row="1" Grid.Column="1" Tag="Foreground" Click="Swatch_Click"
+                           Width="34" Height="20" Margin="0 2 8 2" Padding="0"
+                           Background="{Binding PreviewForeground}" />
+                <TextBox   Grid.Row="1" Grid.Column="2" Margin="0 2 0 2" FontFamily="Consolas"
+                           Text="{Binding ForegroundHex, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Shortcut text" />
+                <Button    Grid.Row="2" Grid.Column="1" Tag="Secondary" Click="Swatch_Click"
+                           Width="34" Height="20" Margin="0 2 8 2" Padding="0"
+                           Background="{Binding PreviewSecondaryForeground}" />
+                <TextBox   Grid.Row="2" Grid.Column="2" Margin="0 2 0 2" FontFamily="Consolas"
+                           Text="{Binding SecondaryHex, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Border" />
+                <Button    Grid.Row="3" Grid.Column="1" Tag="Border" Click="Swatch_Click"
+                           Width="34" Height="20" Margin="0 2 8 2" Padding="0"
+                           Background="{Binding PreviewBorder}" />
+                <TextBox   Grid.Row="3" Grid.Column="2" Margin="0 2 0 2" FontFamily="Consolas"
+                           Text="{Binding BorderHex, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <Grid Margin="0 10 0 0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Opacity" />
+                <Slider    Grid.Column="1" Minimum="0.2" Maximum="1.0" TickFrequency="0.05"
+                           IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                           Value="{Binding ColourOpacity}" />
+                <TextBlock Grid.Column="2" Margin="8 0 12 0" MinWidth="34"
+                           Text="{Binding ColourOpacity, StringFormat={}{0:0.00}}" />
+                <Button    Grid.Column="3" x:Name="ResetColoursButton" Content="Reset to built-in"
+                           Padding="10 3 10 3" Click="ResetColoursButton_Click" />
+            </Grid>
+
+            <!-- ====================== Excluded commands ======================== -->
+            <TextBlock Text="Never announce these commands" Style="{StaticResource Heading}" />
+
+            <TextBox Text="{Binding ExcludedCommands, UpdateSourceTrigger=PropertyChanged}"
+                     AcceptsReturn="True" TextWrapping="NoWrap"
+                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                     Height="72" FontFamily="Consolas" />
+            <TextBlock Style="{StaticResource Hint}"
+                       Text="One per line, or separated by semicolons. Use the command name shown in the status bar; a trailing * matches a prefix, so Edit.Line* covers Edit.LineDown and Edit.LineUp. Noisy IDE commands such as cursor movement are always excluded." />
+
+            <!-- ============================ Advanced =========================== -->
+            <TextBlock Text="Advanced" Style="{StaticResource Heading}" />
+
+            <CheckBox Content="Write diagnostics to the Output window" IsChecked="{Binding Diagnostics}" />
+            <TextBlock Style="{StaticResource Hint}"
+                       Text="{Binding ThemesFilePath, StringFormat=Settings and themes are stored beside {0}}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

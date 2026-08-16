@@ -1,4 +1,4 @@
-﻿namespace PresentationAssistant
+namespace PresentationAssistant
 {
     internal sealed partial class Vsix
     {
@@ -6,7 +6,7 @@
         public const string Name        = "PresentationAssistant";
         public const string Description = @"Presentation Assistant for Visual Studio which will display the keyboard shortcuts for the currently executing action.";
         public const string Language    = "en-US";
-        public const string Version     = "2026.1.0.0";
+        public const string Version     = "2026.2.0.0";
         public const string Author      = "Lokesh Govindu";
         public const string Tags        = "keyboard, shortcuts, commands";
     }

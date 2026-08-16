@@ -130,6 +130,74 @@ namespace PresentationAssistant.Theming
         /// <summary>Drops the cache so the next access re-reads themes.json.</summary>
         public static void Invalidate() => _current = null;
 
+        /// <summary>
+        /// Writes <paramref name="definition"/> into themes.json, replacing any existing
+        /// entry with the same name. This is how the options page persists colours edited
+        /// in the UI.
+        /// </summary>
+        /// <remarks>
+        /// Rewriting the file loses any comments in it. The documentation lives in the
+        /// generated themes.reference.json, which is never rewritten, so nothing the user
+        /// needs is lost - but a hand-annotated themes.json will come back tidied.
+        /// </remarks>
+        public static void SaveOverride(ThemeDefinition definition)
+        {
+            if (definition == null || string.IsNullOrWhiteSpace(definition.Name)) return;
+
+            var entries = ReadDefinitions().ToList();
+            entries.RemoveAll(d => SameName(d, definition.Name));
+            entries.Add(definition);
+
+            WriteDefinitions(entries);
+        }
+
+        /// <summary>Drops any themes.json entry for <paramref name="name"/>, reverting it to the built-in.</summary>
+        public static void RemoveOverride(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return;
+
+            var entries = ReadDefinitions().ToList();
+            if (entries.RemoveAll(d => SameName(d, name)) == 0) return;
+
+            WriteDefinitions(entries);
+        }
+
+        /// <summary>Whether themes.json currently carries an entry for this theme.</summary>
+        public static bool HasOverride(string name)
+        {
+            return !string.IsNullOrWhiteSpace(name) && ReadDefinitions().Any(d => SameName(d, name));
+        }
+
+        private static bool SameName(ThemeDefinition definition, string name)
+        {
+            return string.Equals(
+                Canonical(definition?.Name),
+                Canonical(name),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void WriteDefinitions(IEnumerable<ThemeDefinition> definitions)
+        {
+            try
+            {
+                AppPaths.EnsureDataFolder();
+
+                // Ignore nulls so an entry only lists the fields that were actually set.
+                var json = JsonConvert.SerializeObject(definitions, Formatting.Indented,
+                    new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+
+                File.WriteAllText(AppPaths.ThemesFile, json);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[{Product.Name}] Failed to write themes.json: {ex}");
+            }
+            finally
+            {
+                Invalidate();
+            }
+        }
+
         private static void Reload()
         {
             _fileStamp = ThemesFileStamp();
@@ -237,7 +305,7 @@ namespace PresentationAssistant.Theming
             catch (Exception ex)
             {
                 // A malformed themes.json must leave the built-ins working.
-                Debug.WriteLine($"[{PresentationAssistantPackage.ApplicationName}] Failed to read themes.json: {ex}");
+                Debug.WriteLine($"[{Product.Name}] Failed to read themes.json: {ex}");
                 return Enumerable.Empty<ThemeDefinition>();
             }
         }
@@ -292,7 +360,7 @@ namespace PresentationAssistant.Theming
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[{PresentationAssistantPackage.ApplicationName}] Failed to seed themes.json: {ex}");
+                Debug.WriteLine($"[{Product.Name}] Failed to seed themes.json: {ex}");
             }
         }
 
@@ -342,7 +410,7 @@ namespace PresentationAssistant.Theming
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[{PresentationAssistantPackage.ApplicationName}] Failed to write themes.reference.json: {ex}");
+                Debug.WriteLine($"[{Product.Name}] Failed to write themes.reference.json: {ex}");
             }
         }
 

@@ -8,15 +8,21 @@ namespace PresentationAssistant
     /// </summary>
     internal static class AppPaths
     {
+        /// <summary>
+        /// Redirects every path below somewhere else. Only for tests, which must not read
+        /// or write the real per-user files.
+        /// </summary>
+        internal static string DataFolderOverride { get; set; }
+
         /// <summary>%APPDATA%\PresentationAssistant</summary>
-        public static string DataFolder => Path.Combine(
+        public static string DataFolder => DataFolderOverride ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            PresentationAssistantPackage.ApplicationName);
+            Product.Name);
 
         /// <summary>%APPDATA%\PresentationAssistant\presentationassistant.json</summary>
         public static string SettingsFile => Path.Combine(
             DataFolder,
-            PresentationAssistantPackage.ApplicationName.ToLowerInvariant() + ".json");
+            Product.Name.ToLowerInvariant() + ".json");
 
         /// <summary>%APPDATA%\PresentationAssistant\themes.json</summary>
         public static string ThemesFile => Path.Combine(DataFolder, "themes.json");

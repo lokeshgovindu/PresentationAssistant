@@ -51,8 +51,8 @@ namespace PresentationAssistant
         /// </summary>
         public const string PackageGuidString = "21f2f4b1-873b-4456-ba7b-2101d1a686c9";
 
-        public const string ApplicationName      = "PresentationAssistant";
-        public const string ApplicationNameShort = "PA";
+        public const string ApplicationName      = Product.Name;
+        public const string ApplicationNameShort = Product.ShortName;
 
         #region Package Members
 
@@ -65,10 +65,8 @@ namespace PresentationAssistant
         private static Settings                     _settings;
         private static CommandExclusions            _exclusions = CommandExclusions.Empty;
 
-#if DEBUG
         private static OutputWindowPane             _outputWindowPane = null;
         private static readonly string              OutputWindowName  = ApplicationName;
-#endif
 
         public static Settings Settings => _settings;
 
@@ -96,10 +94,6 @@ namespace PresentationAssistant
                 Debug.WriteLine($"[{ApplicationName}] No DTE, giving up on initialization.");
                 return;
             }
-
-#if DEBUG
-            CreateOutputWindowPane();
-#endif
 
             _settings   = Settings.Load();
             _exclusions = new CommandExclusions(_settings.ExcludedCommands);
@@ -154,6 +148,8 @@ namespace PresentationAssistant
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
+            if (_settings == null || !_settings.Enabled) return;
+
             var shortcut = GetShortcut(Guid, ID);
             if (shortcut == null) return;
             if (_settings.ShortcutsOnly && !shortcut.HasShortcuts) return;
@@ -198,7 +194,7 @@ namespace PresentationAssistant
                 // Re-resolving per show is what makes an edit to themes.json visible on the
                 // next keystroke. The catalog only re-reads the file when its timestamp
                 // changed, so this is a dictionary lookup in the common case.
-                _window.ShowShortcut(shortcut, ThemeManager.Resolve(_settings.Theme));
+                _window.ShowShortcut(shortcut, CurrentStyle());
 
                 _dte.StatusBar.Text = shortcut.HasShortcuts
                     ? $"{ApplicationNameShort}: {shortcut.ActionId} via {shortcut.ShortcutsStr}"
@@ -248,25 +244,36 @@ namespace PresentationAssistant
         {
             ThemeCatalog.EnsureAuthoringFiles();
 
+            // Deliberately NOT the IDE's own editor. This is invoked from the options
+            // page, which is a modal dialog: a document opened into the IDE appears behind
+            // it, so the button looks like it did nothing. Notepad is always present and
+            // always comes to the front, and plain JSON needs nothing more.
             try
             {
-                // Prefer the VS editor; fall back to the shell if the package has not been
-                // sited yet, so the button always does something.
-                if (ThreadHelper.CheckAccess() && _dte != null)
-                {
-#pragma warning disable VSTHRD010 // CheckAccess above already established main-thread affinity.
-                    _dte.ItemOperations.OpenFile(AppPaths.ThemesFile, EnvDTE.Constants.vsViewKindTextView);
-#pragma warning restore VSTHRD010
-                    return;
-                }
-
-                System.Diagnostics.Process.Start(
-                    new ProcessStartInfo(AppPaths.ThemesFile) { UseShellExecute = true });
+                System.Diagnostics.Process.Start("notepad.exe", "\"" + AppPaths.ThemesFile + "\"");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[{ApplicationName}] Failed to open themes.json: {ex}");
+                Debug.WriteLine($"[{ApplicationName}] Failed to open themes.json in Notepad: {ex}");
+
+                try
+                {
+                    System.Diagnostics.Process.Start(
+                        new ProcessStartInfo(AppPaths.ThemesFile) { UseShellExecute = true });
+                }
+                catch (Exception fallback)
+                {
+                    Debug.WriteLine($"[{ApplicationName}] Failed to open themes.json: {fallback}");
+                }
             }
+        }
+
+        private static OverlayStyle CurrentStyle()
+        {
+            return new OverlayStyle(
+                ThemeManager.Resolve(_settings.Theme),
+                _settings.FontSize,
+                _settings.Layout);
         }
 
         private static void OnWindowClosed(object sender, EventArgs e)
@@ -289,7 +296,7 @@ namespace PresentationAssistant
             if (_window != null)
             {
                 _window.SetWindowTimeout(_settings.WindowTimeoutInMS);
-                _window.ApplyTheme(ThemeManager.Resolve(_settings.Theme));
+                _window.ApplyStyle(CurrentStyle());
             }
         }
 
@@ -299,7 +306,7 @@ namespace PresentationAssistant
             // palette is a dictionary lookup, so don't bother special-casing.
             if (_window != null && _settings != null)
             {
-                _window.ApplyTheme(ThemeManager.Resolve(_settings.Theme));
+                _window.ApplyStyle(CurrentStyle());
             }
         }
 
@@ -340,38 +347,54 @@ namespace PresentationAssistant
             return String.Join(" ", words);
         }
 
+        /// <summary>
+        /// Writes a line to the PresentationAssistant pane in the Output window when the
+        /// Diagnostics setting is on. Available in Release too: without it a user reporting
+        /// a problem has nothing to send back. The pane is created on first use, so it
+        /// costs nothing while diagnostics are off.
+        /// </summary>
         public static void OutputLine(string messageFormat, params object[] arguments)
         {
-#if DEBUG
-            ThreadHelper.ThrowIfNotOnUIThread();
-            _outputWindowPane?.OutputString(string.Format(messageFormat, arguments) + Environment.NewLine);
-#endif
-        }
+            if (_settings == null || !_settings.Diagnostics) return;
+            if (!ThreadHelper.CheckAccess()) return;
 
-#if DEBUG
-        public static OutputWindowPane GetOutputWindowPane()
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            CreateOutputWindowPane();
-            return _outputWindowPane;
-        }
-
-        public static void CreateOutputWindowPane()
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            if (_outputWindowPane == null)
+            try
             {
-                var outputWindow = (OutputWindow)GetOutputWindow().Object;
-                _outputWindowPane = outputWindow.OutputWindowPanes.Add(OutputWindowName);
-                _outputWindowPane.OutputString($"{ApplicationName} output window created{Environment.NewLine}");
+#pragma warning disable VSTHRD010 // CheckAccess above already established main-thread affinity.
+                var pane = GetOutputWindowPane();
+                var message = arguments == null || arguments.Length == 0
+                    ? messageFormat
+                    : string.Format(messageFormat, arguments);
+
+                pane?.OutputString(message + Environment.NewLine);
+#pragma warning restore VSTHRD010
+            }
+            catch (Exception ex)
+            {
+                // Diagnostics must never be the thing that breaks the extension.
+                Debug.WriteLine($"[{ApplicationName}] Failed to write diagnostics: {ex}");
             }
         }
 
-        public static EnvDTE.Window GetOutputWindow()
+        private static OutputWindowPane GetOutputWindowPane()
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-            return _dte.Windows.Item(EnvDTE.Constants.vsWindowKindOutput);
+
+            if (_outputWindowPane == null && _dte != null)
+            {
+                var window = _dte.Windows.Item(EnvDTE.Constants.vsWindowKindOutput);
+                var outputWindow = (OutputWindow)window.Object;
+
+                // The analyzer cannot see the assertion above from inside the lambda.
+#pragma warning disable VSTHRD010
+                _outputWindowPane = outputWindow.OutputWindowPanes
+                    .Cast<OutputWindowPane>()
+                    .FirstOrDefault(p => p.Name == OutputWindowName)
+                    ?? outputWindow.OutputWindowPanes.Add(OutputWindowName);
+#pragma warning restore VSTHRD010
+            }
+
+            return _outputWindowPane;
         }
-#endif
     }
 }

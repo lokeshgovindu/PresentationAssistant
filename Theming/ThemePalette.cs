@@ -143,6 +143,35 @@ namespace PresentationAssistant.Theming
                 Mix(from.B, towards.B, amount));
         }
 
+        /// <summary>Formats a colour the way themes.json expects it, e.g. "#DCF2DC".</summary>
+        public static string ToHex(Color color)
+        {
+            return string.Format("#{0:X2}{1:X2}{2:X2}", color.R, color.G, color.B);
+        }
+
+        /// <summary>
+        /// Parses a colour written the way themes.json accepts it. Returns false rather
+        /// than throwing, so a half-typed value in the options page is simply ignored.
+        /// </summary>
+        public static bool TryParse(string value, out Color color)
+        {
+            color = default(Color);
+            if (string.IsNullOrWhiteSpace(value)) return false;
+
+            try
+            {
+                var converted = ColorConverter.ConvertFromString(value.Trim());
+                if (!(converted is Color parsed)) return false;
+
+                color = parsed;
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         /// <summary>Perceived brightness in the 0..1 range, used to tell dark shells from light ones.</summary>
         public static double Luminance(Color color)
         {

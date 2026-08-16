@@ -48,6 +48,13 @@
     <Compile Include="ActionIdBlocklist.cs" />
     <Compile Include="AppPaths.cs" />
     <Compile Include="CommandExclusions.cs" />
+    <Compile Include="OverlayLayout.cs" />
+    <Compile Include="OverlayStyle.cs" />
+    <Compile Include="Product.cs" />
+    <Compile Include="State\OptionsPageControl.xaml.cs">
+      <DependentUpon>OptionsPageControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="State\OptionsViewModel.cs" />
     <Compile Include="PresentationAssistantWindow.xaml.cs">
       <DependentUpon>PresentationAssistantWindow.xaml</DependentUpon>
     </Compile>
@@ -80,6 +87,14 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Resources\Icon.png">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\PreviewImage.png">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />
@@ -96,6 +111,10 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="PresentationAssistantWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="State\OptionsPageControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

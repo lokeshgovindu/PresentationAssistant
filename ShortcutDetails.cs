@@ -30,6 +30,9 @@ namespace PresentationAssistant
 
         public string ShortcutsStr => HasShortcuts ? string.Join(" or ", Shortcuts) : string.Empty;
 
+        /// <summary>The repeat count as it is displayed, e.g. "×9". Empty for a single press.</summary>
+        public string MultiplierStr => HasMultiplier ? "×" + Multiplier : string.Empty;
+
         public override string ToString()
         {
             return $"ActionId: [{ActionId}], Description: [{Description}], " +

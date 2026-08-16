@@ -22,6 +22,11 @@ namespace PresentationAssistant
             "Edit.PageUp",
             "Edit.PageDown",
 
+            // Backspace and Delete: bound, so Shortcuts Only does not filter them, but
+            // announcing every one of them while typing is pure noise.
+            "Edit.DeleteBackwards",
+            "Edit.Delete",
+
             // Toolbar combo boxes fire on every selection change
             "Debug.DebugType",
             "Build.SolutionPlatforms",

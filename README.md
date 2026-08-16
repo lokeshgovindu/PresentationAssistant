@@ -21,6 +21,7 @@ to learn your own key bindings.
 - [Custom themes](#custom-themes)
 - [Where things are stored](#where-things-are-stored)
 - [Building from source](#building-from-source)
+- [Tests](#tests)
 - [How it works](#how-it-works)
 - [Project layout](#project-layout)
 
@@ -68,20 +69,53 @@ Both are supported by the same VSIX — the manifest's `InstallationTarget` is
 
 ## Options
 
-**Tools → Options → PresentationAssistant → General**
+**Tools → Options → PresentationAssistant → General**, which previews the overlay live as
+you change it:
 
-![The options page](docs/options.png)
+```
+┌ Preview ──────────────────────────────────────────────┐
+│        Scroll Line Down via Ctrl+Down Arrow ×9        │
+└───────────────────────────────────────────────────────┘
+
+Behaviour     [x] Enabled
+              [ ] Only announce commands that have a keyboard shortcut
+                  Hide the overlay after  [ 5000] ms
+                  Count repeats within    [10000] ms
+
+Appearance    Theme      [ VisualStudio     v ]  [ Edit themes... ]
+              Font size  [------o----]  24
+              Layout     (o) One line   ( ) Two lines
+
+Colours       Background     [#] [#16241B]
+              Command text   [#] [#E4F2E7]
+              Shortcut text  [#] [#93AE9B]
+              Border         [#] [#4C9A63]
+              Opacity        [----o--] 0.90    [ Reset to built-in ]
+
+Never announce these commands
+              +----------------------+
+              | Edit.Line*           |
+              | View.Output          |
+              +----------------------+
+
+Advanced      [ ] Write diagnostics to the Output window
+```
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| **Window Timeout (MS)** | `5000` | How long the overlay stays on screen after the last command. |
-| **Multiplier Timeout (MS)** | `10000` | Maximum gap between two presses that still count towards the same `×N` run. |
-| **Shortcuts Only** | `false` | When set, commands without a key binding are not announced. |
-| **Excluded Commands** | empty | Commands never to announce — see [below](#excluding-commands). |
-| **Theme** | `VisualStudio` | Overlay colours — see [below](#themes). |
-| **Themes File** | — | Shows where `themes.json` lives. Press the **`...`** button to open it for editing. |
+| **Enabled** | `true` | Master switch. Turns the overlay off without uninstalling the extension. |
+| **Only announce commands that have a keyboard shortcut** | `false` | Hides commands with no key binding. |
+| **Hide the overlay after** | `5000` ms | How long the overlay stays on screen after the last command. |
+| **Count repeats within** | `10000` ms | Largest gap between two presses that still count towards the same `×N` run. |
+| **Theme** | `VisualStudio` | Overlay palette — see [below](#themes). |
+| **Font size** | `24` | Overlay text size, 8 to 96. |
+| **Layout** | One line | One line, or the shortcut stacked under the command name. |
+| **Colours** | from the theme | The four colours and the opacity of the selected theme — see [below](#custom-themes). |
+| **Excluded commands** | empty | Commands never to announce — see [below](#excluding-commands). |
+| **Diagnostics** | `false` | Log what the extension is doing to a PresentationAssistant pane in the Output window. |
 
-Changes apply immediately; there is no need to restart the IDE.
+Changes apply immediately; there is no need to restart the IDE. Timeouts and font size are
+clamped to sane ranges, so a stray value cannot leave the overlay stuck on screen.
 
 ## Excluding commands
 
@@ -135,13 +169,23 @@ a theme would otherwise render the overlay unreadable.
 
 ## Custom themes
 
-Themes live in `%APPDATA%\PresentationAssistant\themes.json`.
+There are two ways to change colours, and they share one storage format.
 
-The quickest way in is the **`...`** button on the **Themes File** row in Options — it
-creates the file if needed and opens it in the editor. Alongside it sits
-`themes.reference.json`, a generated listing of every built-in theme in full, so editing
-one is copy, paste, tweak rather than guessing hex codes. That file is rewritten every
-session and never read back; only `themes.json` needs your attention.
+**In the options page.** The **Colours** section edits the four colours and the opacity of
+whichever theme is selected. Click a swatch for a colour picker, or type a value such as
+`#DCF2DC`. The preview updates as you go, and **Reset to built-in** puts a theme back the
+way it shipped. Saving writes the result as a `themes.json` entry for that theme, so the
+built-in itself is never modified.
+
+**By hand**, in `%APPDATA%\PresentationAssistant\themes.json` — the same file the options
+page writes. Press **Edit themes...** to open it. Alongside it sits
+`themes.reference.json`, a generated listing of every built-in theme in full, so starting
+from one is copy, paste, tweak rather than guessing hex codes. The reference is rewritten
+every session and never read back; only `themes.json` matters.
+
+> **Note** — the options page rewrites `themes.json`, which drops any comments in it. The
+> documentation lives in `themes.reference.json`, which is never rewritten, so nothing you
+> need is lost, but a hand-annotated `themes.json` will come back tidied.
 
 An entry adds a new theme, or overrides a built-in one when the name matches:
 
@@ -255,6 +299,36 @@ deployed, which is the easiest way to try a change.
 Newtonsoft.Json is a compile-time-only reference — it is not copied into the VSIX, and
 binds to the copy the shell already loads.
 
+## Tests
+
+```powershell
+dotnet test Tests/PresentationAssistant.Tests.csproj
+```
+
+The tests **compile the extension's own source files** rather than referencing the VSIX
+project, so they build with nothing but the .NET SDK — no Visual Studio extension
+development workload, which is what lets them run on a bare CI runner. Only files that do
+not touch the Visual Studio SDK can be linked that way, so they cover the parts that are
+plain logic:
+
+- the theme catalog: built-ins, `themes.json` overrides, the computed `Auto`/`VisualStudio`
+  entries, legacy name aliases, and saving and removing overrides
+- theme definitions: partial merges, derived colours, unparseable values
+- palette maths: hex round-tripping, contrast, and the shell derivation's readability guard
+- command exclusions and the built-in blocklist
+- the repeat counter
+- settings: clamping, defaults, and the JSON round-trip including older files
+
+`AppPaths.DataFolderOverride` redirects at a temporary folder for the duration of each
+test, so nothing reads or writes the real `%APPDATA%` files.
+
+What is **not** covered here is anything that needs the IDE: the package, the overlay
+window, `ThemeManager`'s shell lookups, and the options page. Those are exercised by
+running the extension.
+
+[GitHub Actions](.github/workflows/build.yml) runs the tests and builds the VSIX on every
+push and pull request.
+
 ## How it works
 
 The package hooks `DTE.Events.CommandEvents.BeforeExecute`, which the IDE raises for every
@@ -295,3 +369,8 @@ rendered.
 | `Theming\ThemeManager.cs` | Resolves a name to a palette; follows the shell theme. |
 | `Theming\ThemeNameConverter.cs` | Populates the Theme dropdown from the catalog. |
 | `Theming\ThemesFileEditor.cs` | The **`...`** button that opens `themes.json`. |
+| `State\OptionsPageControl.xaml[.cs]` | The options page UI, including the live preview and colour pickers. |
+| `State\OptionsViewModel.cs` | Editable settings plus the derived preview. |
+| `OverlayStyle.cs`, `OverlayLayout.cs` | How one showing of the overlay should look. |
+| `Product.cs` | Product name, kept free of the VS SDK so the tests can compile the logic. |
+| `Tests\` | The test project - see [Tests](#tests). |

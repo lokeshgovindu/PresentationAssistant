@@ -1,6 +1,8 @@
 using PresentationAssistant.Theming;
 using System;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Threading;
 using System.Threading.Tasks;
@@ -80,10 +82,54 @@ namespace PresentationAssistant
         }
 
         /// <summary>
-        /// Swaps in the colors of <paramref name="palette"/>. The XAML binds these keys
-        /// with DynamicResource, so replacing the entries repaints the live window.
+        /// Applies colours, text size and layout. The XAML binds the colour keys with
+        /// DynamicResource, so replacing the entries repaints the live window.
         /// </summary>
-        public void ApplyTheme(ThemePalette palette)
+        public void ApplyStyle(OverlayStyle style)
+        {
+            if (style == null) return;
+
+            ApplyTheme(style.Palette);
+
+            if (style.FontSize > 0) FontSize = style.FontSize;
+
+            var vertical = style.Layout == OverlayLayout.Vertical;
+
+            CommandText.Orientation = vertical ? Orientation.Vertical : Orientation.Horizontal;
+            DetailPanel.Margin = vertical ? new Thickness(0, 2, 0, 0) : new Thickness(8, 0, 0, 0);
+        }
+
+        /// <summary>
+        /// Shows only the parts that apply to this command. Set in code rather than bound,
+        /// so it is settled before the overlay is revealed - and because "via" depends on
+        /// the layout as well as on the data.
+        /// </summary>
+        private void ApplyDetailVisibility(ShortcutDetails shortcut, OverlayLayout layout)
+        {
+            var hasShortcuts = shortcut != null && shortcut.HasShortcuts;
+
+            // On two lines the shortcut sits under the command, where "via" reads oddly.
+            ViaText.Visibility = hasShortcuts && layout == OverlayLayout.Horizontal
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            ShortcutsText.Visibility = hasShortcuts ? Visibility.Visible : Visibility.Collapsed;
+            ShortcutsText.Margin = ViaText.Visibility == Visibility.Visible
+                ? new Thickness(6, 0, 0, 0)
+                : new Thickness(0);
+
+            MultiplierText.Visibility = shortcut != null && shortcut.HasMultiplier
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            // With nothing to show beside it, the panel should not add spacing either.
+            DetailPanel.Visibility = ShortcutsText.Visibility == Visibility.Visible ||
+                                     MultiplierText.Visibility == Visibility.Visible
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        private void ApplyTheme(ThemePalette palette)
         {
             if (palette == null) return;
 
@@ -114,10 +160,11 @@ namespace PresentationAssistant
         /// moves it into view - so the first frame the user sees is always correct.
         /// </para>
         /// </remarks>
-        public void ShowShortcut(ShortcutDetails shortcut, ThemePalette palette)
+        public void ShowShortcut(ShortcutDetails shortcut, OverlayStyle style)
         {
-            ApplyTheme(palette);
+            ApplyStyle(style);
             SetShortcut(shortcut);
+            ApplyDetailVisibility(shortcut, style?.Layout ?? OverlayLayout.Horizontal);
 
             if (!_hasBeenShown)
             {
@@ -135,6 +182,9 @@ namespace PresentationAssistant
 
             if (_parked)
             {
+                // Re-resolve while out of sight: the user may have moved to a different
+                // window since the overlay was last on screen.
+                FindParentWindow();
                 RevealWhenComposed();
             }
             else
@@ -315,7 +365,21 @@ namespace PresentationAssistant
             if (!_parked) PlaceWindow();
         }
 
-        private void FindParentWindow() => _parentWindow = Application.Current?.MainWindow;
+        /// <summary>
+        /// The shell window to position against: the active one, so a floating document
+        /// window on a second monitor gets the overlay rather than the main window's
+        /// monitor. Falls back to the main window.
+        /// </summary>
+        private void FindParentWindow()
+        {
+            var app = Application.Current;
+            if (app == null) return;
+
+            _parentWindow = app.Windows
+                .Cast<Window>()
+                .FirstOrDefault(w => w.IsActive && !ReferenceEquals(w, this))
+                ?? app.MainWindow;
+        }
 
         #region Click-through interop
 

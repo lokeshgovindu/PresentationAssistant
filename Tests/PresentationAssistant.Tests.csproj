@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The tests compile the extension's own source files rather than referencing the VSIX
+    project. That keeps them buildable with nothing but the .NET SDK - no Visual Studio
+    extension development workload - which is what lets CI run them on a bare runner.
+
+    Only files that do not touch the Visual Studio SDK can be linked in this way. Anything
+    that does (the package, the overlay window, ThemeManager, the options page) is covered
+    by running the extension itself, not here.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>PresentationAssistant.Tests</RootNamespace>
+    <AssemblyName>PresentationAssistant.Tests</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>$(NoWarn);CS0436</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="*.cs" />
+  </ItemGroup>
+
+  <!-- The code under test, compiled in. -->
+  <ItemGroup>
+    <Compile Include="..\Product.cs"                     Link="Source\Product.cs" />
+    <Compile Include="..\AppPaths.cs"                    Link="Source\AppPaths.cs" />
+    <Compile Include="..\OverlayLayout.cs"               Link="Source\OverlayLayout.cs" />
+    <Compile Include="..\ActionIdBlocklist.cs"           Link="Source\ActionIdBlocklist.cs" />
+    <Compile Include="..\CommandExclusions.cs"           Link="Source\CommandExclusions.cs" />
+    <Compile Include="..\ShortcutDetails.cs"             Link="Source\ShortcutDetails.cs" />
+    <Compile Include="..\ShortcutDisplayStatistics.cs"   Link="Source\ShortcutDisplayStatistics.cs" />
+    <Compile Include="..\SampleData.cs"                  Link="Source\SampleData.cs" />
+    <Compile Include="..\State\Settings.cs"              Link="Source\State\Settings.cs" />
+    <Compile Include="..\Theming\ThemeNames.cs"          Link="Source\Theming\ThemeNames.cs" />
+    <Compile Include="..\Theming\ThemePalette.cs"        Link="Source\Theming\ThemePalette.cs" />
+    <Compile Include="..\Theming\ThemeDefinition.cs"     Link="Source\Theming\ThemeDefinition.cs" />
+    <Compile Include="..\Theming\ThemeCatalog.cs"        Link="Source\Theming\ThemeCatalog.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Runtime.Serialization" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.6.1" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.6.1" />
+  </ItemGroup>
+
+</Project>

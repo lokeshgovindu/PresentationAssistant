@@ -22,16 +22,18 @@ Nineteen fixed palettes come with it, including the original green overlay as **
 
 ![themes.png](themes.png)
 
-## Your own themes
+## Your own colours
 
-Themes live in `%APPDATA%\PresentationAssistant\themes.json`. An entry adds a theme, or overrides a built-in one when the name matches - and every field except `Name` is optional, so you can change just the one colour you care about:
+The options page has a **Colours** section: click a swatch for a colour picker, or type a value such as `#DCF2DC`, and watch the preview update. It edits whichever theme is selected, and **Reset to built-in** puts it back. The built-in itself is never modified - your version is stored as an entry in `themes.json`.
+
+That file is also editable by hand, if you prefer. An entry adds a theme, or overrides a built-in one when the name matches, and every field except `Name` is optional:
 
     [
       { "Name": "My Talk", "Background": "#101820", "Border": "#2E86AB", "IsDark": true },
       { "Name": "Amber", "Opacity": 1.0 }
     ]
 
-Press the `...` button on the **Themes File** row in Options to open it. A generated `themes.reference.json` sits beside it listing every built-in theme in full, so editing one is copy, paste, tweak. Changes apply on the next keystroke, with no restart.
+A generated `themes.reference.json` sits beside it listing every built-in theme in full, so starting from one is copy, paste, tweak. Changes apply on the next keystroke, with no restart.
 
 Overriding `Classic` or `ClassicDark` also changes what `Auto` looks like.
 
@@ -41,12 +43,16 @@ Under **Tools > Options > PresentationAssistant > General**:
 
 ![options.png](options.png)
 
-- **Theme** - overlay colours, including any you define yourself.
-- **Themes File** - opens `themes.json` for editing.
-- **Window Timeout (MS)** - how long the overlay stays on screen. Default 5000.
-- **Multiplier Timeout (MS)** - the largest gap between two presses that still count as a repeat. Default 10000.
-- **Shortcuts Only** - when set, commands without a key binding are not announced.
+- **Enabled** - turn the overlay off without uninstalling the extension.
+- **Theme** - overlay palette, including any you define yourself.
+- **Colours** - the four colours and the opacity of the selected theme, with a live preview.
+- **Font size** - 8 to 96; the default is 24.
+- **Layout** - one line, or the shortcut stacked under the command name.
+- **Hide the overlay after** - how long it stays on screen. Default 5000 ms.
+- **Count repeats within** - the largest gap between two presses that still count as a repeat. Default 10000 ms.
+- **Only announce commands that have a keyboard shortcut**.
 - **Excluded Commands** - commands never to announce.
+- **Diagnostics** - log to a PresentationAssistant pane in the Output window.
 
 Settings are stored as JSON in `%APPDATA%\PresentationAssistant`, so they survive Visual Studio upgrades and can be copied between machines.
 

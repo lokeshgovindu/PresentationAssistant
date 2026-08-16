@@ -22,8 +22,6 @@
         Opacity="0.85">
 
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-
         <!-- Fallbacks for the designer. ApplyTheme replaces these entries at runtime,
              which is why every consumer below uses DynamicResource. -->
         <SolidColorBrush x:Key="PA.BackgroundBrush"          Color="#DCF2DC" />
@@ -32,6 +30,11 @@
         <SolidColorBrush x:Key="PA.BorderBrush"              Color="#7FA97F" />
     </Window.Resources>
 
+    <!-- Plain TextBlocks with margins rather than Runs and literal spaces: Run.Text binds
+         TwoWay by default, which throws on the get-only properties below, and spacing has
+         to come from margins so the same tree works in either layout. Visibility and
+         spacing are set in ApplyStyle rather than bound, so they are settled before the
+         window is revealed. -->
     <Border BorderThickness="1"
             BorderBrush="{DynamicResource PA.BorderBrush}"
             Padding="10 5 10 5">
@@ -40,26 +43,29 @@
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center">
 
-            <!-- Every binding below must state Mode explicitly. Run.Text binds TwoWay by
-                 default, and ShortcutDetails exposes get-only properties, so an implicit
-                 binding throws "a TwoWay binding cannot work on the read-only property"
-                 during layout - swallowed silently inside the DTE event handler. -->
-
             <!-- "Scroll Line Down". No ToolTip: the window is click-through
-                 (WS_EX_TRANSPARENT) so it never sees the mouse and a tooltip could never
-                 appear. The full command id goes to the status bar instead. -->
-            <TextBlock FontWeight="Bold"
+                 (WS_EX_TRANSPARENT) so it never sees the mouse. The full command id goes
+                 to the status bar instead. -->
+            <TextBlock Name="DescriptionText"
+                       FontWeight="Bold"
+                       HorizontalAlignment="Center"
                        Text="{Binding Description, Mode=OneWay}" />
 
-            <!-- " via Ctrl+Down Arrow" -->
-            <TextBlock xml:space="preserve"
-                       Foreground="{DynamicResource PA.SecondaryForegroundBrush}"
-                       Visibility="{Binding HasShortcuts, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"> via <Run Text="{Binding ShortcutsStr, Mode=OneWay}" /></TextBlock>
-
-            <!-- " ×9" -->
-            <TextBlock xml:space="preserve"
-                       Foreground="{DynamicResource PA.SecondaryForegroundBrush}"
-                       Visibility="{Binding HasMultiplier, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"> ×<Run Text="{Binding Multiplier, Mode=OneWay}" /></TextBlock>
+            <StackPanel Name="DetailPanel"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Center">
+                <TextBlock Name="ViaText"
+                           Text="via"
+                           Foreground="{DynamicResource PA.SecondaryForegroundBrush}" />
+                <TextBlock Name="ShortcutsText"
+                           Margin="6 0 0 0"
+                           Foreground="{DynamicResource PA.SecondaryForegroundBrush}"
+                           Text="{Binding ShortcutsStr, Mode=OneWay}" />
+                <TextBlock Name="MultiplierText"
+                           Margin="8 0 0 0"
+                           Foreground="{DynamicResource PA.SecondaryForegroundBrush}"
+                           Text="{Binding MultiplierStr, Mode=OneWay}" />
+            </StackPanel>
         </StackPanel>
     </Border>
 </Window>
