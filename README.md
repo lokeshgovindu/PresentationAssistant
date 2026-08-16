@@ -21,6 +21,7 @@ to learn your own key bindings.
 - [Custom themes](#custom-themes)
 - [Where things are stored](#where-things-are-stored)
 - [Building from source](#building-from-source)
+- [Versioning](#versioning)
 - [Tests](#tests)
 - [How it works](#how-it-works)
 - [Project layout](#project-layout)
@@ -298,6 +299,41 @@ deployed, which is the easiest way to try a change.
 
 Newtonsoft.Json is a compile-time-only reference — it is not copied into the VSIX, and
 binds to the copy the shell already loads.
+
+## Versioning
+
+`MAJOR.MINOR.0.COMMIT` — the last component is the repository's commit count, so every build
+traces back to exactly one commit:
+
+```
+2026.1.0.9      commit 9
+2026.2.0.14     next feature release; MAJOR.MINOR bumped by hand, the count carries on
+```
+
+The number is the **total** commit count rather than commits since a tag. Tags get re-cut,
+and a build number that can move backwards is worse than useless once published: the
+Marketplace will not offer the update, and that version is burned for good. For the same
+reason the script refuses to stamp anything at all if it cannot read the count, or if the
+clone is shallow, instead of quietly writing a low number.
+
+A commit hook keeps it up to date. Enable it once per clone — hooks are not cloned:
+
+```powershell
+git config core.hooksPath .githooks
+```
+
+The version lives in two files that must agree: `source.extension.vsixmanifest` carries it
+for the VSIX, and `source.extension.cs` feeds `AssemblyVersion` and `AssemblyFileVersion`.
+The hook writes both.
+
+To commit without stamping — a docs-only change, say:
+
+```powershell
+$env:PA_SKIP_VERSION_BUMP = 1
+```
+
+`.githooks/bump-version.sh` also runs on its own: `--print` reports the current version,
+`--at-head` stamps the count as it stands (for rebuilding an existing commit).
 
 ## Tests
 

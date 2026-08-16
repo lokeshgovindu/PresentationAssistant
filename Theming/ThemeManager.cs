@@ -1,6 +1,8 @@
 using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Threading;
 using System;
+using System.Threading.Tasks;
 using System.Windows.Media;
 
 namespace PresentationAssistant.Theming
@@ -12,6 +14,9 @@ namespace PresentationAssistant.Theming
     /// </summary>
     internal static class ThemeManager
     {
+        /// <summary>How long to let the shell settle before re-reading its themed colours.</summary>
+        private const int SettleDelayMs = 60;
+
         // Resolve runs once per announced command, and for the shell-derived themes it
         // would otherwise re-query shell colors and rebuild brushes every time. Cache the
         // result and invalidate on the only three things that can change it.
@@ -137,10 +142,31 @@ namespace PresentationAssistant.Theming
                 : Color.FromRgb(color.R, color.G, color.B);
         }
 
+        /// <summary>
+        /// The shell raises this before its themed colours have actually changed over, so
+        /// reading them here hands back the theme being replaced. Anything resolved at that
+        /// moment would then be cached as the *new* palette - which is how switching Visual
+        /// Studio to Light left the overlay still dark.
+        /// </summary>
+        /// <remarks>
+        /// So the generation is bumped twice: once now, to discard what is cached, and again
+        /// after the shell has settled, to discard anything a command resolved in between.
+        /// Only then is <see cref="ThemeChanged"/> raised.
+        /// </remarks>
         private static void OnVsColorThemeChanged(ThemeChangedEventArgs e)
         {
             _shellGeneration++;
-            ThemeChanged?.Invoke(null, EventArgs.Empty);
+
+            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                // Long enough for the shell to finish swapping its colours over. Without
+                // the wait, the values read back are the theme being replaced.
+                await Task.Delay(TimeSpan.FromMilliseconds(SettleDelayMs)).ConfigureAwait(false);
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+                _shellGeneration++;
+                ThemeChanged?.Invoke(null, EventArgs.Empty);
+            }).FileAndForget("PresentationAssistant/ThemeChanged");
         }
     }
 }

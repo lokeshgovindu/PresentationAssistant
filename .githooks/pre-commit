@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Stamps the commit number into the extension version on every commit, so a build can always
+# be traced back to exactly one commit.
+#
+# Enable it once per clone (hooks are not themselves cloned):
+#
+#   git config core.hooksPath .githooks
+#
+# To commit without bumping - cutting a release at an exact version, or a docs-only change:
+#
+#   PA_SKIP_VERSION_BUMP=1 git commit ...
+#
+set -e
+
+if [ -n "$PA_SKIP_VERSION_BUMP" ]; then
+    echo "pre-commit: version bump skipped (PA_SKIP_VERSION_BUMP is set)"
+    exit 0
+fi
+
+# Nothing staged means nothing to version.
+git diff --cached --quiet && exit 0
+
+next=$(sh "$(dirname "$0")/bump-version.sh")
+echo "pre-commit: version stamped as $next"
+
+# Include the bump in the commit being made, rather than leaving it dirty afterwards.
+git add source.extension.vsixmanifest
+[ -f source.extension.cs ] && git add source.extension.cs
+
+exit 0

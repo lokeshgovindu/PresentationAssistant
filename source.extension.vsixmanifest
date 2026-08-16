@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="PresentationAssistant.c16bf07b-ac52-45b4-99b5-d751ca5f48df" Version="2026.2.0.0" Language="en-US" Publisher="Lokesh Govindu" />
+    <Identity Id="PresentationAssistant.c16bf07b-ac52-45b4-99b5-d751ca5f48df" Version="2026.1.0.9" Language="en-US" Publisher="Lokesh Govindu" />
     <DisplayName>PresentationAssistant</DisplayName>
     <Description xml:space="preserve">Presentation Assistant for Visual Studio which will display the keyboard shortcuts for the currently executing action.</Description>
     <MoreInfo>https://marketplace.visualstudio.com/items?itemName=LokeshGovindu.PresentationAssistant</MoreInfo>
