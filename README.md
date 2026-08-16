@@ -73,10 +73,6 @@ you change it:
 
 ![The options page](docs/options.png)
 
-Scrolling down reaches the colours, the exclusion list and the diagnostics switch:
-
-![Colours and exclusions](docs/options-colours.png)
-
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | **Enabled** | `true` | Master switch. Turns the overlay off without uninstalling the extension. |
