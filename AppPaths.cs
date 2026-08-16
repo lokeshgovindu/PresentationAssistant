@@ -34,5 +34,22 @@ namespace PresentationAssistant
         public static string ThemesReferenceFile => Path.Combine(DataFolder, "themes.reference.json");
 
         public static void EnsureDataFolder() => Directory.CreateDirectory(DataFolder);
+
+        /// <summary>
+        /// A path written the way the documentation writes it, with the roaming folder shown
+        /// as %APPDATA%. Shorter to read, machine independent, and it keeps the user's name
+        /// out of the options page - and therefore out of any screenshot of it.
+        /// </summary>
+        public static string ToDisplayPath(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return path;
+
+            var roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+            return !string.IsNullOrEmpty(roaming) &&
+                   path.StartsWith(roaming, StringComparison.OrdinalIgnoreCase)
+                ? "%APPDATA%" + path.Substring(roaming.Length)
+                : path;
+        }
     }
 }

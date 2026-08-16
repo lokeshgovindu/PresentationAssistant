@@ -115,6 +115,29 @@ namespace PresentationAssistant.Tests
     }
 
     [TestClass]
+    public class AppPathsTests
+    {
+        [TestMethod]
+        public void A_roaming_path_is_shown_as_APPDATA()
+        {
+            var roaming = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData);
+
+            Assert.AreEqual(
+                @"%APPDATA%\PresentationAssistant\themes.json",
+                AppPaths.ToDisplayPath(System.IO.Path.Combine(roaming, "PresentationAssistant", "themes.json")),
+                "the user's name must not reach the options page");
+        }
+
+        [TestMethod]
+        public void A_path_outside_roaming_is_left_alone()
+        {
+            Assert.AreEqual(@"D:\elsewhere\themes.json", AppPaths.ToDisplayPath(@"D:\elsewhere\themes.json"));
+            Assert.AreEqual(null, AppPaths.ToDisplayPath(null));
+            Assert.AreEqual("", AppPaths.ToDisplayPath(""));
+        }
+    }
+
+    [TestClass]
     public class ShortcutDisplayStatisticsTests
     {
         [TestMethod]

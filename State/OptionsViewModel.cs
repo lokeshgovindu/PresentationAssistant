@@ -116,7 +116,8 @@ namespace PresentationAssistant.State
 
         public IReadOnlyList<string> AvailableThemes { get; private set; } = new string[0];
 
-        public string ThemesFilePath => AppPaths.ThemesFile;
+        /// <summary>Shown on the page, so %APPDATA% rather than the expanded path.</summary>
+        public string ThemesFilePath => AppPaths.ToDisplayPath(AppPaths.ThemesFile);
 
         #region Colours
 

@@ -73,34 +73,11 @@ Both are supported by the same VSIX — the manifest's `InstallationTarget` is
 **Tools → Options → PresentationAssistant → General**, which previews the overlay live as
 you change it:
 
-```
-┌ Preview ──────────────────────────────────────────────┐
-│        Scroll Line Down via Ctrl+Down Arrow ×9        │
-└───────────────────────────────────────────────────────┘
+![The options page](docs/options.png)
 
-Behaviour     [x] Enabled
-              [ ] Only announce commands that have a keyboard shortcut
-                  Hide the overlay after  [ 5000] ms
-                  Count repeats within    [10000] ms
+Scrolling down reaches the colours, the exclusion list and the diagnostics switch:
 
-Appearance    Theme      [ VisualStudio     v ]  [ Edit themes... ]
-              Font size  [------o----]  24
-              Layout     (o) One line   ( ) Two lines
-
-Colours       Background     [#] [#16241B]
-              Command text   [#] [#E4F2E7]
-              Shortcut text  [#] [#93AE9B]
-              Border         [#] [#4C9A63]
-              Opacity        [----o--] 0.90    [ Reset to built-in ]
-
-Never announce these commands
-              +----------------------+
-              | Edit.Line*           |
-              | View.Output          |
-              +----------------------+
-
-Advanced      [ ] Write diagnostics to the Output window
-```
+![Colours and exclusions](docs/options-colours.png)
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
